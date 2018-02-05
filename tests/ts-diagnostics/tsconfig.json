@@ -3,6 +3,9 @@
     "target": "ES5",
     "module": "commonjs",
     "moduleResolution": "node",
-    "noEmitOnError": false
+    "noEmitOnError": false,
+    "types": [
+      "jest"
+    ]
   }
 }

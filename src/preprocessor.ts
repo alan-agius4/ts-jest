@@ -46,7 +46,7 @@ export function process(
   logOnce('tsJestConfig: ', tsJestConfig);
 
   if (tsJestConfig.enableTsDiagnostics) {
-    runTsDiagnostics(filePath, compilerOptions);
+    runTsDiagnostics(filePath, src, compilerOptions);
   }
 
   const tsTranspiled = tsc.transpileModule(src, {

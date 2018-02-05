@@ -208,12 +208,46 @@ export function injectSourcemapHook(
     : `${sourceMapHook};${src}`;
 }
 
+const files: tsc.MapLike<tsc.IScriptSnapshot> = {};
 export function runTsDiagnostics(
   filePath: string,
+  text: string,
   compilerOptions: tsc.CompilerOptions,
 ) {
-  const program = tsc.createProgram([filePath], compilerOptions);
-  const allDiagnostics = tsc.getPreEmitDiagnostics(program);
+  // Create the language service host to allow the LS to communicate with the host
+  const serviceHost: tsc.LanguageServiceHost = {
+    getScriptFileNames: () => [filePath],
+    getScriptVersion: fileName => '0',
+    getScriptSnapshot: fileName => {
+      const file = files[fileName];
+
+      if (file) {
+        return file;
+      }
+
+      if (fileName === filePath) {
+        return (files[fileName] = tsc.ScriptSnapshot.fromString(text));
+      }
+
+      try {
+        return (files[fileName] = tsc.ScriptSnapshot.fromString(
+          fs.readFileSync(fileName).toString(),
+        ));
+      } catch {
+        return undefined;
+      }
+    },
+    getCurrentDirectory: () => process.cwd(),
+    getCompilationSettings: () => compilerOptions,
+    getDefaultLibFileName: options => tsc.getDefaultLibFilePath(options),
+    fileExists: tsc.sys.fileExists,
+    readFile: tsc.sys.readFile,
+    readDirectory: tsc.sys.readDirectory,
+  };
+
+  const tsLanguageService = tsc.createLanguageService(serviceHost);
+  const allDiagnostics = tsLanguageService.getSemanticDiagnostics(filePath);
+
   const formattedDiagnostics = allDiagnostics.map(diagnostic => {
     if (diagnostic.file) {
       const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(
